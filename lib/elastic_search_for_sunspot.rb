@@ -1,10 +1,13 @@
 module ElasticSearchForSunspot
   module ClassMethods
     class Index
-      attr_reader :sym, :sym_type
-      def initialize(sym_type, sym, stored: nil, using: nil, multiple: nil)
+      attr_reader :sym, :sym_type, :block, :using_sym
+
+      def initialize(sym_type, sym, block, stored: nil, using: nil, multiple: nil)
         @sym_type = sym_type
         @sym = sym
+        @block = block
+        @using_sym = using
       end
     end
 
@@ -14,28 +17,36 @@ module ElasticSearchForSunspot
         @indexes = []
       end
 
-      def text(sym, **hargs)
-        indexer(:text, sym, **hargs)
+      def text(sym, **hargs, &block)
+        indexer(:text, sym, **hargs, &block)
       end
 
-      def string(sym, **hargs)
-        indexer(:keyword, sym, **hargs)
+      def string(sym, **hargs, &block)
+        indexer(:keyword, sym, **hargs, &block)
       end
 
-      def time(sym, **hargs)
-        indexer(:date, sym, **hargs)
+      def time(sym, **hargs, &block)
+        indexer(:date, sym, **hargs, &block)
       end
 
-      def integer(sym, **hargs)
-        indexer(:long, sym, **hargs)
+      def integer(sym, **hargs, &block)
+        indexer(:long, sym, **hargs, &block)
       end
 
-      def float(sym, **hargs)
-        indexer(:double, sym, **hargs)
+      def float(sym, **hargs, &block)
+        indexer(:double, sym, **hargs, &block)
       end
 
       def indexed_json(object)
-        Hash[@indexes.map{|index| [index.sym, object.send(index.sym)] }]
+        Hash[@indexes.map do |index|
+          [index.sym,
+           index.using_sym ?
+             object.send(index.using_sym) :
+             (index.block ?
+               index.block.call :
+               object.send(index.sym))
+          ]
+        end]
       end
 
       def create_index
@@ -51,8 +62,8 @@ module ElasticSearchForSunspot
 
       private
 
-      def indexer(sym_type, sym, **hargs)
-        @indexes.push(Index.new(sym_type, sym, **hargs))
+      def indexer(sym_type, sym, **hargs, &block)
+        @indexes.push(Index.new(sym_type, sym, block, **hargs))
       end
     end
 
