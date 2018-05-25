@@ -1,4 +1,5 @@
+require_relative 'todo_searchable'
+
 class Todo < ApplicationRecord
-  include Elasticsearch::Model
-  include Elasticsearch::Model::Callbacks
+  include TodoSearchable
 end
